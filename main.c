@@ -74,6 +74,9 @@
 #define CKd_D 0
 #define CKd_G 0
 #define DELTA 0x50
+#define alpha_0_deg 5 //valeur pour le pilotage de l'angle du servo
+#define alpha_90_deg 8
+#define alpha_180_deg 10
 
 enum CMDE {
 	START,
@@ -91,6 +94,7 @@ volatile enum MODE Mode;
 volatile unsigned char New_CMDE = 0;
 volatile uint16_t Dist_ACS_1, Dist_ACS_2, Dist_ACS_3, Dist_ACS_4;
 volatile unsigned int Time = 0;
+volatile unsigned int Time_servo = 0;
 volatile unsigned int Tech = 0;
 uint16_t adc_buffer[8];
 uint16_t Buff_Dist[8];
@@ -126,6 +130,7 @@ void regulateur(void);
 void controle(void);
 void Calcul_Vit(void);
 void ACS(void);
+void pilote_servo(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -167,11 +172,14 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   MX_USART3_UART_Init();
+  MX_TIM1_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
   	HAL_SuspendTick(); // suppresion des Tick interrupt pour le mode sleep.
+
+  	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);  // Start PWM motor
 
   	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);  // Start PWM motor
   	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
@@ -194,6 +202,8 @@ int main(void)
 		  flag_awd = 0;
 		  Mode = SLEEP;
 	  }
+	  //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 48);
+	  //pilote_servo();
 	  Gestion_Commandes();
 	  controle();
   /* USER CODE END WHILE */
@@ -1039,6 +1049,18 @@ void regulateur(void) {
 	}
 }
 
+void pilote_servo(void){
+
+	if (Time_servo == 0){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 5);
+	} else if (Time_servo == 300){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 8);
+	} else if (Time_servo == 600){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 10);
+		Time_servo = 0;
+	}
+}
+
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART3) {
 
@@ -1096,6 +1118,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
 		cpt++;
 		Time++;
 		Tech++;
+		Time_servo++;
+
 
 		switch (cpt) {
 		case 1: {
