@@ -77,6 +77,10 @@
 #define alpha_m90_deg 795 //valeur pour le pilotage de l'angle du servo
 #define alpha_0_deg 2000
 #define alpha_90_deg 3900
+#define T_sonar_1 2000
+#define T_sonar_2 2500
+#define T_sonar_3 3000
+#define T_sonar_4 3500
 
 enum CMDE {
 	START,
@@ -84,7 +88,8 @@ enum CMDE {
 	AVANT,
 	ARRIERE,
 	DROITE,
-	GAUCHE
+	GAUCHE,
+	CMDE_PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -115,6 +120,7 @@ uint32_t Dist_Obst_cm;
 uint32_t Dist;
 uint8_t UNE_FOIS = 1;
 uint32_t OV = 0;
+volatile unsigned char flag_servo = 0;
 
 extern volatile unsigned char flag_awd;
 /* USER CODE END PV */
@@ -202,9 +208,12 @@ int main(void)
 		  flag_awd = 0;
 		  Mode = SLEEP;
 	  }
-	  pilote_servo();
 	  Gestion_Commandes();
 	  controle();
+
+		if (flag_servo > 0){
+			pilote_servo();
+		}
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -836,6 +845,11 @@ if (New_CMDE) {
 			break;
 
 		}
+		case CMDE_PARK: {
+			flag_servo = 1;
+			Time_servo = 0;
+			break;
+		}
 	}
 }
 }
@@ -1050,14 +1064,25 @@ void regulateur(void) {
 
 void pilote_servo(void){
 
-	if (Time_servo < 50){
+	Mode = ACTIF ;
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+
+	if (flag_servo == 1){
+		Time_servo = 0;
+		flag_servo = 2;
+	}
+	if(Time_servo < T_sonar_1){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
-	} else if (Time_servo > 150) {
-			Time_servo = 0;
-	} else if (Time_servo > 100){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
-	} else if (Time_servo > 50){
+	} else if (Time_servo > T_sonar_1 && Time_servo < T_sonar_2){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+	}  else if (Time_servo > T_sonar_2 && Time_servo < T_sonar_3){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
+	}  else if (Time_servo > T_sonar_3 && Time_servo < T_sonar_4){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+	} else {
+		Mode = SLEEP ;
+		flag_servo = 0;
 	}
 }
 
@@ -1092,6 +1117,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 		case 'D':{
 			// disconnect bluetooth
+			break;
+		}
+		case 'W':{
+			CMDE = CMDE_PARK;
 			break;
 		}
 		default:
