@@ -78,6 +78,7 @@
 #define alpha_0_deg 2000
 #define alpha_90_deg 3900
 
+
 enum CMDE {
 	START,
 	STOP,
@@ -117,6 +118,8 @@ uint8_t UNE_FOIS = 1;
 uint32_t OV = 0;
 
 extern volatile unsigned char flag_awd;
+extern volatile unsigned char Trig_sonar=0;
+extern volatile unint32 sonar_last_measure=0; //Flag de calcul de distance possible
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -131,6 +134,7 @@ void controle(void);
 void Calcul_Vit(void);
 void ACS(void);
 void pilote_servo(void);
+void mesure_distance_sonar(void);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -1048,6 +1052,7 @@ void regulateur(void) {
 	}
 }
 
+
 void pilote_servo(void){
 
 	if (Time_servo < 50){
@@ -1058,6 +1063,25 @@ void pilote_servo(void){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
 	} else if (Time_servo > 50){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+	}
+}
+
+
+void mesure_distance_sonar(void){
+	HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
+
+}
+
+
+//Callback de l'interruption de InputCaptureCompare du timer1
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+	if(htim1->channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
+		Trig_sonar = 0; //On arrête le signal de demande de mesure sonar
+	}
+	else if (htim1->channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front montant de InputComapre
+		//On mutliplie la valeur mesurée par une constante afin d'obtenir une distance
+		Sonar_last_measure = (htim1->Instance->CCR2)/100;
 	}
 }
 
