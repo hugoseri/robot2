@@ -74,9 +74,9 @@
 #define CKd_D 0
 #define CKd_G 0
 #define DELTA 0x50
-#define alpha_0_deg 5 //valeur pour le pilotage de l'angle du servo
-#define alpha_90_deg 8
-#define alpha_180_deg 10
+#define alpha_m90_deg 795 //valeur pour le pilotage de l'angle du servo
+#define alpha_0_deg 2000
+#define alpha_90_deg 3900
 
 enum CMDE {
 	START,
@@ -202,8 +202,7 @@ int main(void)
 		  flag_awd = 0;
 		  Mode = SLEEP;
 	  }
-	  //__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 48);
-	  //pilote_servo();
+	  pilote_servo();
 	  Gestion_Commandes();
 	  controle();
   /* USER CODE END WHILE */
@@ -1051,15 +1050,17 @@ void regulateur(void) {
 
 void pilote_servo(void){
 
-	if (Time_servo == 0){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 5);
-	} else if (Time_servo == 300){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 8);
-	} else if (Time_servo == 600){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, 10);
-		Time_servo = 0;
+	if (Time_servo < 50){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
+	} else if (Time_servo > 150) {
+			Time_servo = 0;
+	} else if (Time_servo > 100){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
+	} else if (Time_servo > 50){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
 	}
 }
+
 
 void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART3) {
