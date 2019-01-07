@@ -77,6 +77,10 @@
 #define alpha_m90_deg 795 //valeur pour le pilotage de l'angle du servo
 #define alpha_0_deg 2000
 #define alpha_90_deg 3900
+#define T_sonar_1 2000
+#define T_sonar_2 2500
+#define T_sonar_3 3000
+#define T_sonar_4 3500
 
 
 enum CMDE {
@@ -85,7 +89,8 @@ enum CMDE {
 	AVANT,
 	ARRIERE,
 	DROITE,
-	GAUCHE
+	GAUCHE,
+	CMDE_PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -116,6 +121,7 @@ uint32_t Dist_Obst_cm;
 uint32_t Dist;
 uint8_t UNE_FOIS = 1;
 uint32_t OV = 0;
+volatile unsigned char flag_servo = 0;
 
 extern volatile unsigned char flag_awd;
 extern volatile unsigned char Trig_sonar=0;
@@ -206,9 +212,12 @@ int main(void)
 		  flag_awd = 0;
 		  Mode = SLEEP;
 	  }
-	  pilote_servo();
 	  Gestion_Commandes();
 	  controle();
+
+		if (flag_servo > 0){
+			pilote_servo();
+		}
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -840,6 +849,10 @@ if (New_CMDE) {
 			break;
 
 		}
+		case CMDE_PARK: {
+			flag_servo = 1;
+			break;
+		}
 	}
 }
 }
@@ -1054,14 +1067,25 @@ void regulateur(void) {
 
 void pilote_servo(void){
 
-	if (Time_servo < 50){
+	Mode = ACTIF ;
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+
+	if (flag_servo == 1){
+		Time_servo = 0;
+		flag_servo = 2;
+	}
+	if(Time_servo < T_sonar_1){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
-	} else if (Time_servo > 150) {
-			Time_servo = 0;
-	} else if (Time_servo > 100){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
-	} else if (Time_servo > 50){
+	} else if (Time_servo >= T_sonar_1 && Time_servo < T_sonar_2){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+	}  else if (Time_servo >= T_sonar_2 && Time_servo < T_sonar_3){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
+	}  else if (Time_servo >= T_sonar_3 && Time_servo < T_sonar_4){
+		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+	} else {
+		flag_servo = 0;
+		Mode = SLEEP ;
 	}
 }
 
@@ -1089,36 +1113,40 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART3) {
 
 		switch (BLUE_RX) {
-		case 'F': {
+		case 'F':
 			CMDE = AVANT;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'B': {
+		case 'B':
 			CMDE = ARRIERE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'L': {
+		case 'L':
 			CMDE = GAUCHE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'R': {
+		case 'R':
 			CMDE = DROITE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'D':{
+		case 'D':
 			// disconnect bluetooth
 			break;
-		}
-		default:
+
+		case 'W':
+			CMDE = CMDE_PARK;
 			New_CMDE = 1;
+			break;
+
+		case 'S':
+			break;
+
+		default:
+			New_CMDE = 0;
 		}
 
 		HAL_UART_Receive_IT(&huart3, &BLUE_RX, 1);
