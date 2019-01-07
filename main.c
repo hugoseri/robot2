@@ -847,7 +847,6 @@ if (New_CMDE) {
 		}
 		case CMDE_PARK: {
 			flag_servo = 1;
-			Time_servo = 0;
 			break;
 		}
 	}
@@ -1074,15 +1073,15 @@ void pilote_servo(void){
 	}
 	if(Time_servo < T_sonar_1){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
-	} else if (Time_servo > T_sonar_1 && Time_servo < T_sonar_2){
+	} else if (Time_servo >= T_sonar_1 && Time_servo < T_sonar_2){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
-	}  else if (Time_servo > T_sonar_2 && Time_servo < T_sonar_3){
+	}  else if (Time_servo >= T_sonar_2 && Time_servo < T_sonar_3){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
-	}  else if (Time_servo > T_sonar_3 && Time_servo < T_sonar_4){
+	}  else if (Time_servo >= T_sonar_3 && Time_servo < T_sonar_4){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
 	} else {
-		Mode = SLEEP ;
 		flag_servo = 0;
+		Mode = SLEEP ;
 	}
 }
 
@@ -1091,40 +1090,40 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 	if (huart->Instance == USART3) {
 
 		switch (BLUE_RX) {
-		case 'F': {
+		case 'F':
 			CMDE = AVANT;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'B': {
+		case 'B':
 			CMDE = ARRIERE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'L': {
+		case 'L':
 			CMDE = GAUCHE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'R': {
+		case 'R':
 			CMDE = DROITE;
-			//New_CMDE = 1;
+			New_CMDE = 1;
 			break;
-		}
 
-		case 'D':{
+		case 'D':
 			// disconnect bluetooth
 			break;
-		}
-		case 'W':{
+
+		case 'W':
 			CMDE = CMDE_PARK;
-			break;
-		}
-		default:
 			New_CMDE = 1;
+			break;
+
+		case 'S':
+			break;
+
+		default:
+			New_CMDE = 0;
 		}
 
 		HAL_UART_Receive_IT(&huart3, &BLUE_RX, 1);
