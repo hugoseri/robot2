@@ -124,8 +124,9 @@ uint32_t OV = 0;
 volatile unsigned char flag_servo = 0;
 
 extern volatile unsigned char flag_awd;
-extern volatile unsigned char Trig_sonar=0;
-extern volatile uint32_t Sonar_last_measure=0; //Flag de calcul de distance possible
+
+volatile unsigned char Trig_sonar=0;
+volatile uint32_t Sonar_last_measure=0; //Flag de calcul de distance possible
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -190,6 +191,11 @@ int main(void)
   	HAL_SuspendTick(); // suppresion des Tick interrupt pour le mode sleep.
 
   	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);  // Start PWM motor
+  	HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);  // Start input capture motor
+  	HAL_TIM_IC_Start(&htim1, TIM_CHANNEL_1);  // Start input capture motor
+
+  	HAL_TIM_IC_Start(&htim1, TIM_CHANNEL_2);  // Start input capture motor
+  	HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_2);  // Start input capture motor
 
   	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_4);  // Start PWM motor
   	HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
@@ -204,6 +210,9 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+
+  mesure_distance_sonar();
+
   while (1)
   {
 	  //batterie faible
@@ -1091,16 +1100,18 @@ void pilote_servo(void){
 
 
 void mesure_distance_sonar(void){
+	Trig_sonar = 1;
+	Mode = ACTIF ;
 	HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 
 }
 
 
 //Callback de l'interruption de InputCaptureCompare du timer1
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
 		Trig_sonar = 0; //On arrête le signal de demande de mesure sonar
+		HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 	}
 	else if (htim->Channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front descendant de InputComapre
 		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance
