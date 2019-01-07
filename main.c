@@ -9,7 +9,7 @@
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
-  * COPYRIGHT(c) 2018 STMicroelectronics
+  * COPYRIGHT(c) 2019 STMicroelectronics
   *
   * Redistribution and use in source and binary forms, with or without modification,
   * are permitted provided that the following conditions are met:
@@ -119,7 +119,7 @@ uint32_t OV = 0;
 
 extern volatile unsigned char flag_awd;
 extern volatile unsigned char Trig_sonar=0;
-extern volatile unint32 sonar_last_measure=0; //Flag de calcul de distance possible
+extern volatile uint32_t Sonar_last_measure=0; //Flag de calcul de distance possible
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -1045,7 +1045,6 @@ void regulateur(void) {
 			__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, (uint16_t ) Cmde_VitD);
 			HAL_GPIO_WritePin(DIR1_GPIO_Port, DIR1_Pin, (GPIO_PinState) DirD);
 			HAL_GPIO_WritePin(DIR2_GPIO_Port, DIR2_Pin, (GPIO_PinState) DirG);
-
 		}
 		break;
 	}
@@ -1076,12 +1075,12 @@ void mesure_distance_sonar(void){
 //Callback de l'interruption de InputCaptureCompare du timer1
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-	if(htim1->channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
+	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
 		Trig_sonar = 0; //On arrête le signal de demande de mesure sonar
 	}
-	else if (htim1->channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front montant de InputComapre
-		//On mutliplie la valeur mesurée par une constante afin d'obtenir une distance
-		Sonar_last_measure = (htim1->Instance->CCR2)/100;
+	else if (htim->Channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front descendant de InputComapre
+		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance
+		Sonar_last_measure = (htim->Instance->CCR2)/100;
 	}
 }
 
