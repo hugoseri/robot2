@@ -1123,7 +1123,7 @@ void pilote_servo(void){
 		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
 	} else {
 		flag_servo = 0;
-		Mode = SLEEP ;
+		Mode = SLEEP ; //Pour le test
 	}
 }
 
@@ -1177,7 +1177,6 @@ void mesure_distance_sonar(void){
 	Mode = ACTIF ;
 	tempo_sonar = 1;
 	HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
-
 }
 
 
@@ -1255,10 +1254,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
-	Dist_ACS_3 = adc_buffer[0] - adc_buffer[4];
-	Dist_ACS_4 = adc_buffer[3] - adc_buffer[7];
-	Dist_ACS_1 = adc_buffer[1] - adc_buffer[5];
-	Dist_ACS_2 = adc_buffer[2] - adc_buffer[6];
+	Dist_ACS_3 = adc_buffer[0] - adc_buffer[5];
+	Dist_ACS_4 = adc_buffer[3] - adc_buffer[8];
+	Dist_ACS_1 = adc_buffer[1] - adc_buffer[6];
+	Dist_ACS_2 = adc_buffer[2] - adc_buffer[7];
 	HAL_ADC_Stop_DMA(hadc);
 }
 
