@@ -1103,6 +1103,9 @@ void regulateur(void) {
 	}
 }
 
+
+
+
 void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
 	uint32_t nb_top_G;
 	uint32_t nb_top_D;
@@ -1124,12 +1127,14 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° da
 		} else {
 			nb_top_D = nb_actu_top_D - Nb_top_init_D ;
 		}
+		_CVitD = V1; _CVitG = V1; _DirD = AVANCE; _DirG = RECULE;
 	} else{  //rotation horraire D est en mode arrière, les tops décrémentent
 		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
 			nb_top_D = Nb_top_init_D - nb_actu_top_D;
 		} else {
 			nb_top_D = nb_actu_top_D - Nb_top_init_D ; //On compense l'overflow
 		}
+		_CVitD = V1; _CVitG = V1; _DirD = RECULE; _DirG = AVANCE;
 	}
 	//angle = 90* d/D
 	//DiametreRoue = 6cm
@@ -1138,6 +1143,8 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° da
 	angle = 0.3432 * nb_top_D; //en degré
 	if (angle>88 && angle<92){
 		flag_debut_rotation = 0; //Fin de la rotation passage à l'état suivant
+		_CVitD = 0; _CVitG = 0;
+		_DirD = AVANCE; _DirG = AVANCE;
 	}
 }
 
