@@ -165,6 +165,7 @@ void ACS(void);
 void pilote_servo(void);
 void mesure_xyz(int8_t xyz);
 void mesure_distance_sonar(void);
+void rotation_90(char sens_rotation);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -892,6 +893,7 @@ if (New_CMDE) {
 		case PARK: {
 			rotation_90_test = 1;
 			//flag_mesure = 1;
+			Mode = ACTIF;
 			break;
 		}
 	}
@@ -900,7 +902,7 @@ if (New_CMDE) {
 void controle(void) {
 
 	//Gestion du park
-	if (rotation_90_test = 1){
+	if (rotation_90_test == 1){
 		rotation_90(1);
 	}
 
@@ -1131,26 +1133,26 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° da
 
 	//Gestion de la différence des tops en fonction du sens de rotation
 	if (sens_rotation == 0){ //rotation anti-horraire D est en mode avance, les tops s'incrémentent
-		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
+		if ( Nb_top_init_D > __HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
 			nb_top_D = 65535 + (nb_actu_top_D - Nb_top_init_D) ; //On compense l'overflow
 		} else {
 			nb_top_D = nb_actu_top_D - Nb_top_init_D ;
 		}
-		_CVitD = V1; _CVitG = V1; _DirD = AVANCE; _DirG = RECULE;
+		_CVitD = 20; _CVitG = 20; _DirD = AVANCE; _DirG = RECULE;
 	} else{  //rotation horraire D est en mode arrière, les tops décrémentent
-		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
-			nb_top_D = Nb_top_init_D - nb_actu_top_D;
+		if ( Nb_top_init_D < __HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
+			nb_top_D = 65535 + Nb_top_init_D - nb_actu_top_D;
 		} else {
 			nb_top_D = nb_actu_top_D - Nb_top_init_D ; //On compense l'overflow
 		}
-		_CVitD = V1; _CVitG = V1; _DirD = RECULE; _DirG = AVANCE;
+		_CVitD = 20; _CVitG = 20; _DirD = RECULE; _DirG = AVANCE;
 	}
 	//angle = 90* d/D
 	//DiametreRoue = 6cm
 	//d = 360*nb_top_D*DiametreRoue*pi/333*2*180 = 0.0566 *nb_top
 	//D = 14.84 cm
 	angle = 0.3432 * nb_top_D; //en degré
-	if (angle>88 && angle<92){
+	if (angle>110 && angle<114){
 		flag_debut_rotation = 0; //Fin de la rotation passage à l'état suivant
 		rotation_90_test = 0;
 		_CVitD = 0; _CVitG = 0;
