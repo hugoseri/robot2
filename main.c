@@ -105,7 +105,7 @@ volatile unsigned int Time = 0;
 volatile unsigned int Time_servo = 0;
 volatile unsigned int Time_mesure = 0;
 volatile unsigned int Tech = 0;
-uint16_t adc_buffer[8];
+uint16_t adc_buffer[10];
 uint16_t Buff_Dist[8];
 uint8_t BLUE_RX;
 
@@ -1090,6 +1090,9 @@ void regulateur(void) {
 	}
 }
 
+void rotation_90(void){
+
+}
 
 void pilote_servo(void){
 
@@ -1187,7 +1190,7 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 		HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 	}
 	else if (htim->Channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front descendant de InputComapre
-		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance
+		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance en cm
 		switch (flag_mesure_xyz){
 		case 0:
 			mesure_0 = (htim->Instance->CCR2)/100;
