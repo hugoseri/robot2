@@ -56,7 +56,7 @@
 #define AVANCE 	GPIO_PIN_SET
 #define RECULE  GPIO_PIN_RESET
 #define POURCENT 640
-#define Seuil_Dist_4 1600 // corespond à 10 cm.
+#define Seuil_Dist_4 1600 // corespond ï¿½ 10 cm.
 #define Seuil_Dist_3 1600
 #define Seuil_Dist_1 1600
 #define Seuil_Dist_2 1600
@@ -64,8 +64,9 @@
 #define V2 56
 #define V3 76
 #define Vmax 95
-#define T_2_S 1000 //( pwm période = 2 ms )
+#define T_2_S 1000 //( pwm pï¿½riode = 2 ms )
 #define T_200_MS 100
+#define T_100_MS 50
 #define T_2000_MS 1000
 #define CKp_D 100  //80 Robot1
 #define CKp_G 100  //80 Robot1
@@ -76,13 +77,9 @@
 #define DELTA 0x50
 #define alpha_m90_deg 795 //valeur pour le pilotage de l'angle du servo
 #define alpha_0_deg 2000
-#define alpha_90_deg 3900
+#define alpha_90_deg 3800
 #define T_sonar_11 500
-#define T_sonar_12 1000
 #define T_sonar_1 2000
-#define T_sonar_2 2500
-#define T_sonar_3 3000
-#define T_sonar_4 3500
 
 
 enum CMDE {
@@ -125,28 +122,22 @@ uint32_t Dist;
 uint8_t UNE_FOIS = 1;
 uint32_t OV = 0;
 
+int8_t choix_xyz = -90; //mesure xyz
+
 volatile uint8_t mesure_0 = 0;
 volatile uint8_t mesure_90 = 0;
 volatile uint8_t mesure_m90 = 0;
 
 volatile unsigned char flag_servo = 0;
-volatile unsigned char flag_mesure = 0;
+volatile int8_t flag_mesure = 0;
 volatile unsigned char tempo_sonar = 0;
 
 extern volatile unsigned char flag_awd;
 
 volatile unsigned char Trig_sonar=0;
 volatile uint8_t Sonar_last_measure=0; //Flag de calcul de distance possible
-//A DELETE§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§
+//A DELETEï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 volatile int8_t flag_mesure_xyz=0;
-
-//-------    Variable de rotation à 90°  ------
-uint32_t Nb_top_init_G;
-uint32_t Nb_top_init_D;
-char flag_debut_rotation = 0; // 0 la rotation n'a pas commencé , 1 elle est en cours
-//--------  Fin de la déclaration des variables pour la rotation à 90°   ---------
-
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -160,7 +151,7 @@ void regulateur(void);
 void controle(void);
 void Calcul_Vit(void);
 void ACS(void);
-void pilote_servo(void);
+void mesure_position_robot(void);
 void mesure_xyz(int8_t xyz);
 void mesure_distance_sonar(void);
 /* USER CODE END PFP */
@@ -245,12 +236,6 @@ int main(void)
 	  Gestion_Commandes();
 	  controle();
 
-		if (flag_servo > 0){
-			pilote_servo();
-		}
-		if (flag_mesure > 0){
-			//mesure_xyz(90);
-		}
   /* USER CODE END WHILE */
 
   /* USER CODE BEGIN 3 */
@@ -356,14 +341,14 @@ if (New_CMDE) {
 	switch (CMDE) {
 		case STOP: {
 			_CVitD = _CVitG = 0;
-			// Mise en sommeil: STOP mode , réveil via IT BP1
+			// Mise en sommeil: STOP mode , rï¿½veil via IT BP1
 			Etat = VEILLE;
 			Mode = SLEEP;
 
 			break;
 		}
 		case START: {
-			// réveil sytème grace à l'IT BP1
+			// rï¿½veil sytï¿½me grace ï¿½ l'IT BP1
 			Etat = ARRET;
 			Mode = SLEEP;
 
@@ -884,7 +869,6 @@ if (New_CMDE) {
 		}
 		case CMDE_PARK: {
 			flag_servo = 1;
-			//flag_mesure = 1;
 			break;
 		}
 	}
@@ -892,10 +876,15 @@ if (New_CMDE) {
 }
 void controle(void) {
 
-	//Gestion du park
-
-
-	//
+	if (flag_servo == 1){
+		mesure_position_robot();
+	}
+	if (flag_mesure == -1){ //cas oï¿½ l'on vient de faire une mesure (fin mesure : flag_mesure = -1), on remet ï¿½ 0 le flag (prï¿½t pour une nouvelle mesure)
+		flag_mesure = 0;
+	}
+	if (flag_mesure > 0){
+		mesure_xyz(choix_xyz);
+	}
 
 	if (Tech >= T_200_MS) {
 		Tech = 0;
@@ -903,7 +892,6 @@ void controle(void) {
 		Calcul_Vit();
 		regulateur();
 	}
-
 }
 
 void ACS(void) {
@@ -1103,128 +1091,98 @@ void regulateur(void) {
 	}
 }
 
-void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
-	uint32_t nb_top_G;
-	uint32_t nb_top_D;
+void rotation_90(void){
 
-	uint32_t nb_actu_top_D =  __HAL_TIM_GET_COUNTER(&htim3);
+void mesure_position_robot(void){
+//fonction permettant la mesure en mode commande park des positions x y et z
 
-	uint32_t d=0;
-	uint8_t angle = 0;
+	if (flag_servo == 1){ //tant qu'on n'a pas fini la mesure des 3 positions
 
-	if(flag_debut_rotation == 0){
-		Nb_top_init_D =  __HAL_TIM_GET_COUNTER(&htim3); //nb de top au début de la rotation
-		flag_debut_rotation = 1; //La rotation a commencée
-	}
-
-	//Gestion de la différence des tops en fonction du sens de rotation
-	if (sens_rotation == 0){ //rotation anti-horraire D est en mode avance, les tops s'incrémentent
-		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
-			nb_top_D = 65535 + (nb_actu_top_D - Nb_top_init_D) ; //On compense l'overflow
-		} else {
-			nb_top_D = nb_actu_top_D - Nb_top_init_D ;
+		switch (choix_xyz){
+		case -90:
+			if (flag_mesure == 0){
+				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
+			}
+			if (flag_mesure == -1){ //quand on a fini la mesure, on passe ï¿½ l'angle suivant
+				choix_xyz = 0;
+			}
+			break;
+		case 0:
+			if (flag_mesure == 0){
+				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
+			}
+			if (flag_mesure == -1){ //quand on a fini la mesure, on passe ï¿½ l'angle suivant
+				choix_xyz = 90;
+			}
+			break;
+		case 90:
+			if (flag_mesure == 0){
+				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
+			}
+			if (flag_mesure == -1){ //quand on a fini la mesure, on passe ï¿½ l'angle suivant
+				choix_xyz = 0;
+				flag_servo = 0; //on a fini de mesurer x,y,z
+			}
+			break;
 		}
-	} else{  //rotation horraire D est en mode arrière, les tops décrémentent
-		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
-			nb_top_D = Nb_top_init_D - nb_actu_top_D;
-		} else {
-			nb_top_D = nb_actu_top_D - Nb_top_init_D ; //On compense l'overflow
-		}
-	}
-	//angle = 90* d/D
-	//DiametreRoue = 6cm
-	//d = 360*nb_top_D*DiametreRoue*pi/333*2*180 = 0.0566 *nb_top
-	//D = 14.84 cm
-	angle = 0.3432 * nb_top_D; //en degré
-	if (angle>88 && angle<92){
-		flag_debut_rotation = 0; //Fin de la rotation passage à l'état suivant
-	}
-}
-
-void pilote_servo(void){
-
-	Mode = ACTIF ;
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
-
-	if (flag_servo == 1){
-		Time_servo = 0;
-		flag_servo = 2;
-	}
-	if(Time_servo <= T_sonar_1){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
-		if (Time_servo == T_sonar_1){
-			flag_mesure_xyz = -90;
-			mesure_distance_sonar();
-		}
-	} else if (Time_servo > T_sonar_1 && Time_servo <= T_sonar_2){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
-		if (Time_servo == T_sonar_2){
-			flag_mesure_xyz = 0;
-			mesure_distance_sonar();
-		}
-	}  else if (Time_servo > T_sonar_2 && Time_servo <= T_sonar_3){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
-		if (Time_servo == T_sonar_3){
-			flag_mesure_xyz = 90;
-			mesure_distance_sonar();
-		}
-	}  else if (Time_servo > T_sonar_3 && Time_servo <= T_sonar_4){
-		__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
-	} else {
-		flag_servo = 0;
-		Mode = SLEEP ; //Pour le test
 	}
 }
 
 void mesure_xyz(int8_t xyz){
-//fonction permettant de mesurer la distance x,y ou z du robot à un mur
+//fonction permettant de mesurer la distance x,y ou z du robot ï¿½ un mur
 	Mode = ACTIF ;
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
+	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
 
 	if (flag_mesure == 1){
 		Time_mesure = 0;
 		flag_mesure = 2;
 	}
 
-	switch (xyz){
-	case 0:
-		flag_mesure_xyz = 0;
-		if(Time_mesure < T_sonar_11){
-			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
-		} else {
-			mesure_distance_sonar();
-			flag_mesure = 0;
-			Mode = SLEEP ;
+	if (flag_mesure == 2){
+		switch (xyz){
+		case 0:
+			flag_mesure_xyz = 0;
+			if(Time_mesure < T_sonar_11){
+				__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_0_deg);
+			} else {
+				mesure_distance_sonar(); //on lance la mesure du sonar
+				if (tempo_sonar == 0){ //quand on a fini la mesure du sonar
+					flag_mesure = -1;
+					Mode = SLEEP;
+				}
+			}
+			break;
+		case -90:
+			flag_mesure_xyz = -90;
+			if(Time_mesure < T_sonar_1){
+				__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
+			} else {
+				mesure_distance_sonar(); //on lance la mesure du sonar
+				if (tempo_sonar == 0){ //quand on a fini la mesure du sonar
+					flag_mesure = -1;
+					Mode = SLEEP;
+				}
+			}
+			break;
+		case 90:
+			flag_mesure_xyz = 90;
+			if(Time_mesure < T_sonar_11){
+				__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
+			} else {
+				mesure_distance_sonar(); //on lance la mesure du sonar
+				if (tempo_sonar == 0){ //quand on a fini la mesure du sonar
+					flag_mesure = -1;
+					Mode = SLEEP;
+				}
+			}
+			break;
 		}
-		break;
-	case -90:
-		flag_mesure_xyz = -90;
-		if(Time_mesure < T_sonar_1){
-			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_m90_deg);
-		} else {
-			mesure_distance_sonar();
-			flag_mesure = 0;
-			Mode = SLEEP ;
-		}
-		break;
-	case 90:
-		flag_mesure_xyz = 90;
-		if(Time_mesure < T_sonar_11){
-			__HAL_TIM_SET_COMPARE(&htim1, TIM_CHANNEL_4, alpha_90_deg);
-		} else {
-			mesure_distance_sonar();
-			flag_mesure = 0;
-			Mode = SLEEP ;
-		}
-		break;
 	}
 }
 
 void mesure_distance_sonar(void){
 	Trig_sonar = 1;
-	Mode = ACTIF ;
 	tempo_sonar = 1;
 	HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 }
@@ -1233,11 +1191,11 @@ void mesure_distance_sonar(void){
 //Callback de l'interruption de InputCaptureCompare du timer1
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
-		Trig_sonar = 0; //On arrête le signal de demande de mesure sonar
+		Trig_sonar = 0; //On arrï¿½te le signal de demande de mesure sonar
 		HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 	}
 	else if (htim->Channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front descendant de InputComapre
-		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance en cm
+		//On divise la valeur mesurï¿½e par une constante (100) afin d'obtenir une distance en cm
 		switch (flag_mesure_xyz){
 		case 0:
 			mesure_0 = (htim->Instance->CCR2)/100;
@@ -1320,7 +1278,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef * htim) {
 		Tech++;
 
 		if (tempo_sonar == 0){
-			Time_servo++;
 			Time_mesure++;
 		}
 
