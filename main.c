@@ -56,7 +56,7 @@
 #define AVANCE 	GPIO_PIN_SET
 #define RECULE  GPIO_PIN_RESET
 #define POURCENT 640
-#define Seuil_Dist_4 1600 // corespond ï¿½ 10 cm.
+#define Seuil_Dist_4 1600 // corespond à 10 cm.
 #define Seuil_Dist_3 1600
 #define Seuil_Dist_1 1600
 #define Seuil_Dist_2 1600
@@ -64,7 +64,7 @@
 #define V2 56
 #define V3 76
 #define Vmax 95
-#define T_2_S 1000 //( pwm pï¿½riode = 2 ms )
+#define T_2_S 1000 //( pwm période = 2 ms )
 #define T_200_MS 100
 #define T_2000_MS 1000
 #define CKp_D 100  //80 Robot1
@@ -92,7 +92,8 @@ enum CMDE {
 	ARRIERE,
 	DROITE,
 	GAUCHE,
-	CMDE_PARK
+	CMDE_PARK,
+	PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -105,7 +106,7 @@ volatile unsigned int Time = 0;
 volatile unsigned int Time_servo = 0;
 volatile unsigned int Time_mesure = 0;
 volatile unsigned int Tech = 0;
-uint16_t adc_buffer[8];
+uint16_t adc_buffer[10];
 uint16_t Buff_Dist[8];
 uint8_t BLUE_RX;
 
@@ -137,14 +138,15 @@ extern volatile unsigned char flag_awd;
 
 volatile unsigned char Trig_sonar=0;
 volatile uint8_t Sonar_last_measure=0; //Flag de calcul de distance possible
-//A DELETEï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+//A DELETE§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§
 volatile int8_t flag_mesure_xyz=0;
 
-//-------    Variable de rotation ï¿½ 90ï¿½  ------
+//-------    Variable de rotation à 90°  ------
 uint32_t Nb_top_init_G;
 uint32_t Nb_top_init_D;
-char flag_debut_rotation = 0; // 0 la rotation n'a pas commencï¿½ , 1 elle est en cours
-//--------  Fin de la dï¿½claration des variables pour la rotation ï¿½ 90ï¿½   ---------
+char flag_debut_rotation = 0; // 0 la rotation n'a pas commencé , 1 elle est en cours
+char rotation_90_test = 0;
+//--------  Fin de la déclaration des variables pour la rotation à 90°   ---------
 
 
 /* USER CODE END PV */
@@ -356,14 +358,14 @@ if (New_CMDE) {
 	switch (CMDE) {
 		case STOP: {
 			_CVitD = _CVitG = 0;
-			// Mise en sommeil: STOP mode , rï¿½veil via IT BP1
+			// Mise en sommeil: STOP mode , réveil via IT BP1
 			Etat = VEILLE;
 			Mode = SLEEP;
 
 			break;
 		}
 		case START: {
-			// rï¿½veil sytï¿½me grace ï¿½ l'IT BP1
+			// réveil sytème grace à l'IT BP1
 			Etat = ARRET;
 			Mode = SLEEP;
 
@@ -887,13 +889,20 @@ if (New_CMDE) {
 			//flag_mesure = 1;
 			break;
 		}
+		case PARK: {
+			rotation_90_test = 1;
+			//flag_mesure = 1;
+			break;
+		}
 	}
 }
 }
 void controle(void) {
 
 	//Gestion du park
-
+	if (rotation_90_test = 1){
+		rotation_90(1);
+	}
 
 	//
 
@@ -1106,7 +1115,7 @@ void regulateur(void) {
 
 
 
-void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90ï¿½ dans le sens horraire sinon dans le sens anti-horraire
+void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
 	uint32_t nb_top_G;
 	uint32_t nb_top_D;
 
@@ -1116,19 +1125,19 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90ï¿½ 
 	uint8_t angle = 0;
 
 	if(flag_debut_rotation == 0){
-		Nb_top_init_D =  __HAL_TIM_GET_COUNTER(&htim3); //nb de top au dï¿½but de la rotation
-		flag_debut_rotation = 1; //La rotation a commencï¿½e
+		Nb_top_init_D =  __HAL_TIM_GET_COUNTER(&htim3); //nb de top au début de la rotation
+		flag_debut_rotation = 1; //La rotation a commencée
 	}
 
-	//Gestion de la diffï¿½rence des tops en fonction du sens de rotation
-	if (sens_rotation == 0){ //rotation anti-horraire D est en mode avance, les tops s'incrï¿½mentent
+	//Gestion de la différence des tops en fonction du sens de rotation
+	if (sens_rotation == 0){ //rotation anti-horraire D est en mode avance, les tops s'incrémentent
 		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
 			nb_top_D = 65535 + (nb_actu_top_D - Nb_top_init_D) ; //On compense l'overflow
 		} else {
 			nb_top_D = nb_actu_top_D - Nb_top_init_D ;
 		}
 		_CVitD = V1; _CVitG = V1; _DirD = AVANCE; _DirG = RECULE;
-	} else{  //rotation horraire D est en mode arriï¿½re, les tops dï¿½crï¿½mentent
+	} else{  //rotation horraire D est en mode arrière, les tops décrémentent
 		if ( Nb_top_init_D <__HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
 			nb_top_D = Nb_top_init_D - nb_actu_top_D;
 		} else {
@@ -1140,16 +1149,16 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90ï¿½ 
 	//DiametreRoue = 6cm
 	//d = 360*nb_top_D*DiametreRoue*pi/333*2*180 = 0.0566 *nb_top
 	//D = 14.84 cm
-	angle = 0.3432 * nb_top_D; //en degrï¿½
+	angle = 0.3432 * nb_top_D; //en degré
 	if (angle>88 && angle<92){
-		flag_debut_rotation = 0; //Fin de la rotation passage ï¿½ l'ï¿½tat suivant
+		flag_debut_rotation = 0; //Fin de la rotation passage à l'état suivant
+		rotation_90_test = 0;
 		_CVitD = 0; _CVitG = 0;
 		_DirD = AVANCE; _DirG = AVANCE;
 	}
 }
 
 void pilote_servo(void){
-
 	Mode = ACTIF ;
 	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
 	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
@@ -1185,7 +1194,7 @@ void pilote_servo(void){
 }
 
 void mesure_xyz(int8_t xyz){
-//fonction permettant de mesurer la distance x,y ou z du robot ï¿½ un mur
+//fonction permettant de mesurer la distance x,y ou z du robot à un mur
 	Mode = ACTIF ;
 		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
 		__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
@@ -1234,18 +1243,17 @@ void mesure_distance_sonar(void){
 	Mode = ACTIF ;
 	tempo_sonar = 1;
 	HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
-
 }
 
 
 //Callback de l'interruption de InputCaptureCompare du timer1
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim) {
 	if(htim->Channel==HAL_TIM_ACTIVE_CHANNEL_1){//Front montant de InputComapre
-		Trig_sonar = 0; //On arrï¿½te le signal de demande de mesure sonar
+		Trig_sonar = 0; //On arrête le signal de demande de mesure sonar
 		HAL_GPIO_WritePin(Trig_sonar_GPIO_Port, Trig_sonar_Pin, (GPIO_PinState) Trig_sonar);
 	}
 	else if (htim->Channel==HAL_TIM_ACTIVE_CHANNEL_2){ //Front descendant de InputComapre
-		//On divise la valeur mesurï¿½e par une constante (100) afin d'obtenir une distance
+		//On divise la valeur mesurée par une constante (100) afin d'obtenir une distance en cm
 		switch (flag_mesure_xyz){
 		case 0:
 			mesure_0 = (htim->Instance->CCR2)/100;
@@ -1298,6 +1306,11 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			New_CMDE = 1;
 			break;
 
+		case 'V':
+			CMDE = PARK;
+			New_CMDE = 1;
+			break;
+
 		case 'S':
 			break;
 
@@ -1312,10 +1325,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
-	Dist_ACS_3 = adc_buffer[0] - adc_buffer[4];
-	Dist_ACS_4 = adc_buffer[3] - adc_buffer[7];
-	Dist_ACS_1 = adc_buffer[1] - adc_buffer[5];
-	Dist_ACS_2 = adc_buffer[2] - adc_buffer[6];
+	Dist_ACS_3 = adc_buffer[0] - adc_buffer[5];
+	Dist_ACS_4 = adc_buffer[3] - adc_buffer[8];
+	Dist_ACS_1 = adc_buffer[1] - adc_buffer[6];
+	Dist_ACS_2 = adc_buffer[2] - adc_buffer[7];
 	HAL_ADC_Stop_DMA(hadc);
 }
 
