@@ -89,7 +89,8 @@ enum CMDE {
 	ARRIERE,
 	DROITE,
 	GAUCHE,
-	CMDE_PARK
+	CMDE_PARK,
+	PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -154,6 +155,7 @@ void ACS(void);
 void mesure_position_robot(void);
 void mesure_xyz(int8_t xyz);
 void mesure_distance_sonar(void);
+void rotation_90(char sens_rotation);
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -871,10 +873,21 @@ if (New_CMDE) {
 			flag_servo = 1;
 			break;
 		}
+		case PARK: {
+			rotation_90_test = 1;
+			//flag_mesure = 1;
+			Mode = ACTIF;
+			break;
+		}
 	}
 }
 }
 void controle(void) {
+
+	//Gestion du park
+	if (rotation_90_test == 1){
+		rotation_90(1);
+	}
 
 	if (flag_servo == 1){
 		mesure_position_robot();
@@ -1091,6 +1104,49 @@ void regulateur(void) {
 	}
 }
 
+
+void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
+	uint32_t nb_top_G;
+	uint32_t nb_top_D;
+
+	uint32_t nb_actu_top_D =  __HAL_TIM_GET_COUNTER(&htim3);
+
+	uint32_t d=0;
+	uint8_t angle = 0;
+
+	if(flag_debut_rotation == 0){
+		Nb_top_init_D =  __HAL_TIM_GET_COUNTER(&htim3); //nb de top au début de la rotation
+		flag_debut_rotation = 1; //La rotation a commencée
+	}
+
+	//Gestion de la différence des tops en fonction du sens de rotation
+	if (sens_rotation == 0){ //rotation anti-horraire D est en mode avance, les tops s'incrémentent
+		if ( Nb_top_init_D > __HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
+			nb_top_D = 65535 + (nb_actu_top_D - Nb_top_init_D) ; //On compense l'overflow
+		} else {
+			nb_top_D = nb_actu_top_D - Nb_top_init_D ;
+		}
+		_CVitD = 20; _CVitG = 20; _DirD = AVANCE; _DirG = RECULE;
+	} else{  //rotation horraire D est en mode arrière, les tops décrémentent
+		if ( Nb_top_init_D < __HAL_TIM_GET_COUNTER(&htim3) ){ //Il y a eu un overflow du timer
+			nb_top_D = 65535 + Nb_top_init_D - nb_actu_top_D;
+		} else {
+			nb_top_D = nb_actu_top_D - Nb_top_init_D ; //On compense l'overflow
+		}
+		_CVitD = 20; _CVitG = 20; _DirD = RECULE; _DirG = AVANCE;
+	}
+	//angle = 90* d/D
+	//DiametreRoue = 6cm
+	//d = 360*nb_top_D*DiametreRoue*pi/333*2*180 = 0.0566 *nb_top
+	//D = 14.84 cm
+	angle = 0.3432 * nb_top_D; //en degré
+	if (angle>110 && angle<114){
+		flag_debut_rotation = 0; //Fin de la rotation passage à l'état suivant
+		rotation_90_test = 0;
+		_CVitD = 0; _CVitG = 0;
+		_DirD = AVANCE; _DirG = AVANCE;
+	}
+}
 
 void mesure_position_robot(void){
 //fonction permettant la mesure en mode commande park des positions x y et z
