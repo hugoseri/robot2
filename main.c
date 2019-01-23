@@ -56,10 +56,17 @@
 #define AVANCE 	GPIO_PIN_SET
 #define RECULE  GPIO_PIN_RESET
 #define POURCENT 640
+/*
 #define Seuil_Dist_4 1600 // corespond � 10 cm.
 #define Seuil_Dist_3 1600
 #define Seuil_Dist_1 1600
 #define Seuil_Dist_2 1600
+*/
+#define Seuil_Dist_4 10000 // corespond � 10 cm.
+#define Seuil_Dist_3 10000
+#define Seuil_Dist_1 10000
+#define Seuil_Dist_2 10000
+
 #define V1 38
 #define V2 56
 #define V3 76
@@ -135,6 +142,7 @@ uint8_t parked_y = 0;
 uint8_t parked_z = 0;
 
 volatile unsigned char flag_parked = 0;
+volatile unsigned char flag_att_park = 0;
 volatile int8_t flag_mesure = 0;
 volatile unsigned char tempo_sonar = 0;
 
@@ -892,7 +900,7 @@ if (New_CMDE) {
 		}
 		case ATT_PARK: {
 			Mode = ACTIF;
-			deplacement_to_park();
+			flag_att_park = 1;
 			break;
 		}
 	}
@@ -913,6 +921,10 @@ void controle(void) {
 	}
 	if (flag_mesure > 0){
 		mesure_xyz(choix_xyz);
+	}
+
+	if (flag_att_park == 1){
+		deplacement_to_park();
 	}
 
 	if (Tech >= T_200_MS) {
@@ -1024,10 +1036,10 @@ void deplacement_to_park(void){
 		case Avancer50: {
 			if(flag_prem_passage == 0){
 				flag_prem_passage = 1;
-				memoire_dist = DisD;
+				memoire_dist = DistD;
 			}
 			else{
-				if(DistD - memoire_dist < 840){
+				if(abs(DistD - memoire_dist) < 840){
 					_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1035,15 +1047,16 @@ void deplacement_to_park(void){
 					flag_prem_passage = 0;
 				}
 			}
+			break;
 		}
 
 		case Tourner90:{ //Rotation � 90� dans le sens horaire
 			if (flag_prem_passage == 0){
 				flag_prem_passage = 1;
-				memoire_dist = DisG;
+				memoire_dist = DistG;
 			}
 			else{
-				if(DistG - memoire_dist < 200){
+				if(abs(DistG - memoire_dist) < 500){
 					_CVitD = 30; _CVitG = 30; _DirD = RECULE; _DirG = AVANCE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1051,6 +1064,7 @@ void deplacement_to_park(void){
 					flag_prem_passage = 0;
 				}
 			}
+			break;
 		}
 
 		case AvancerAxeYZCons:{
@@ -1104,15 +1118,16 @@ void deplacement_to_park(void){
 					}
 				}
 			}
+			break;
 		}
 
 		case Tourner902:{ //Rotation � 90� dans le sens antihoraire
 			if (flag_prem_passage == 0){
 				flag_prem_passage = 1;
-				memoire_dist = DisD;
+				memoire_dist = DistD;
 			}
 			else{
-				if(DistD - memoire_dist < 200){
+				if(abs(DistD - memoire_dist) < 500){
 					_CVitD = 30; _CVitG = 30; _DirD = AVANCE; _DirG = RECULE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1120,6 +1135,7 @@ void deplacement_to_park(void){
 					flag_prem_passage = 0;
 				}
 			}
+			break;
 		}
 
 		case AvancerAxeXcons:{
@@ -1142,10 +1158,13 @@ void deplacement_to_park(void){
 					flag_prem_passage = 0; 
 				}
 			}
+			break;
 		}
 
 		case Fin:{
+			flag_att_park = 0;
 			Mode = SLEEP;
+			break;
 		}
 	}
 }
@@ -1460,6 +1479,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 		case 'X':
 			CMDE = ATT_PARK;
 			etat_park = Avancer50;
+			flag_prem_passage = 0;
 			New_CMDE = 1;
 
 		case 'V':
