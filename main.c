@@ -89,8 +89,8 @@ enum CMDE {
 	ARRIERE,
 	DROITE,
 	GAUCHE,
-	CMDE_PARK,
-	PARK
+	PARKED,
+	ATT_PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -129,7 +129,7 @@ volatile uint8_t mesure_0 = 0;
 volatile uint8_t mesure_90 = 0;
 volatile uint8_t mesure_m90 = 0;
 
-volatile unsigned char flag_servo = 0;
+volatile unsigned char flag_parked = 0;
 volatile int8_t flag_mesure = 0;
 volatile unsigned char tempo_sonar = 0;
 
@@ -139,6 +139,16 @@ volatile unsigned char Trig_sonar=0;
 volatile uint8_t Sonar_last_measure=0; //Flag de calcul de distance possible
 //A DELETE§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§§
 volatile int8_t flag_mesure_xyz=0;
+
+
+// ---- Attente parked ----
+enum etat_park_list{Avancer50, Tourner90, AvancerAxeYZCons, Tourner902, AvancerAxeXcons, Fin};
+volatile enum etat_park_list etat_park = Avancer50;
+uint8_t flag_prem_passage = 0;
+uint16_t memoire_dist = 0;
+
+// ---- Fin attente park ----
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -155,7 +165,9 @@ void ACS(void);
 void mesure_position_robot(void);
 void mesure_xyz(int8_t xyz);
 void mesure_distance_sonar(void);
-void rotation_90(char sens_rotation);
+void deplacement_to_park(void);
+//void rotation_90(char sens_rotation);
+
 /* USER CODE END PFP */
 
 /* USER CODE BEGIN 0 */
@@ -869,14 +881,13 @@ if (New_CMDE) {
 			break;
 
 		}
-		case CMDE_PARK: {
-			flag_servo = 1;
+		case PARKED: {
+			flag_parked = 1;
 			break;
 		}
-		case PARK: {
-			rotation_90_test = 1;
-			//flag_mesure = 1;
+		case ATT_PARK: {
 			Mode = ACTIF;
+			deplacement_to_park();
 			break;
 		}
 	}
@@ -889,7 +900,7 @@ void controle(void) {
 		rotation_90(1);
 	}
 
-	if (flag_servo == 1){
+	if (flag_parked == 1){
 		mesure_position_robot();
 	}
 	if (flag_mesure == -1){ //cas où l'on vient de faire une mesure (fin mesure : flag_mesure = -1), on remet à 0 le flag (prêt pour une nouvelle mesure)
@@ -1001,6 +1012,140 @@ void ACS(void) {
 	}
 }
 
+void deplacement_to_park(void){
+	uint16_t current_dist = 0;
+	uint16_t dist_to_do = 0;
+	switch (etat_park) {
+		case Avancer50: {
+			if(flag_prem_passage == 0){
+				flag_prem_passage = 1;
+				memoire_dist = DisD;
+			}
+			else{
+				if(DistD - memoire_dist < 840){
+					_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
+				}else{
+					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+					etat_park = Tourner90;
+					flag_prem_passage = 0;
+				}
+			}
+		}
+
+		case Tourner90:{ //Rotation à 90° dans le sens horaire
+			if (flag_prem_passage == 0){
+				flag_prem_passage = 1;
+				memoire_dist = DisG;
+			}
+			else{
+				if(DistG - memoire_dist < 200){
+					_CVitD = 30; _CVitG = 30; _DirD = RECULE; _DirG = AVANCE;
+				}else{
+					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+					etat_park = AvancerAxeYZCons;
+					flag_prem_passage = 0;
+				}
+			}
+		}
+
+		case AvancerAxeYZCons:{
+			if( flag_prem_passage == 0){ //On effectue la mesure de y
+				if (flag_mesure == 0){
+					choix_xyz = 0; //Mesure de y
+					flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
+				}
+				if (flag_mesure == -1){ //quand on a fini la mesure
+					flag_prem_passage = 1;
+				}
+				memoire_dist = DistD;
+			}else{
+				if(parked_y > 50){
+					dist_to_do = abs(mesure_0 - (parked_y - 50));
+					if( mesure_0 > parked_y - 50){
+						current_dist = (DistD - memoire_dist) * 0.0566;
+						_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
+						if(current_dist > dist_to_do){
+							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+							etat_park = Tourner902;
+							flag_prem_passage = 0; 
+						}
+					}else{
+						current_dist = abs(DistD - memoire_dist) * 0.0566;
+						_CVitD = V2; _CVitG = V2; _DirD = RECULE; _DirG = RECULE;
+						if(current_dist > dist_to_do){
+							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+							etat_park = Tourner902;
+							flag_prem_passage = 0;
+						}
+					}
+				}else{
+					dist_to_do = abs(mesure_0 - (parked_y + 50));
+					if( mesure_0 > parked_y + 50){
+						current_dist = (DistD - memoire_dist) * 0.0566;
+						_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
+						if(current_dist > dist_to_do){
+							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+							etat_park = Tourner902;
+							flag_prem_passage = 0;
+						}
+					}else{
+						current_dist = abs(DistD - memoire_dist) * 0.0566;
+						_CVitD = V2; _CVitG = V2; _DirD = RECULE; _DirG = RECULE;
+						if(current_dist > dist_to_do){
+							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+							etat_park = Tourner902;
+							flag_prem_passage = 0;
+						}
+					}
+				}
+			}
+		}
+
+		case Tourner902:{ //Rotation à 90° dans le sens antihoraire
+			if (flag_prem_passage == 0){
+				flag_prem_passage = 1;
+				memoire_dist = DisD;
+			}
+			else{
+				if(DistD - memoire_dist < 200){
+					_CVitD = 30; _CVitG = 30; _DirD = AVANCE; _DirG = RECULE;
+				}else{
+					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+					etat_park = AvancerAxeYZCons;
+					flag_prem_passage = 0;
+				}
+			}
+		}
+
+		case AvancerAxeXcons:{
+			if( flag_prem_passage == 0){ //On effectue la mesure de x
+				if (flag_mesure == 0){
+					choix_xyz = 0; //Mesure de x
+					flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
+				}
+				if (flag_mesure == -1){ //quand on a fini la mesure
+					flag_prem_passage = 1;
+				}
+				memoire_dist = DistD;
+			}else{
+				dist_to_do = mesure_0 - parked_x;
+				current_dist = (DistD - memoire_dist) * 0.0566;
+				_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
+				if(current_dist > dist_to_do){
+					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
+					etat_park = Fin;
+					flag_prem_passage = 0; 
+				}
+			}
+		}
+
+		case Fin:{
+			Mode = SLEEP;
+		}
+	}
+}
+
+
 void Calcul_Vit(void) {
 
 	DistD = __HAL_TIM_GET_COUNTER(&htim3);
@@ -1104,7 +1249,7 @@ void regulateur(void) {
 	}
 }
 
-
+/*
 void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
 	uint32_t nb_top_G;
 	uint32_t nb_top_D;
@@ -1146,12 +1291,12 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° da
 		_CVitD = 0; _CVitG = 0;
 		_DirD = AVANCE; _DirG = AVANCE;
 	}
-}
+}*/
 
 void mesure_position_robot(void){
 //fonction permettant la mesure en mode commande park des positions x y et z
 
-	if (flag_servo == 1){ //tant qu'on n'a pas fini la mesure des 3 positions
+	if (flag_parked == 1){ //tant qu'on n'a pas fini la mesure des 3 positions
 
 		switch (choix_xyz){
 		case -90:
@@ -1176,7 +1321,7 @@ void mesure_position_robot(void){
 			}
 			if (flag_mesure == -1){ //quand on a fini la mesure, on passe à l'angle suivant
 				choix_xyz = 0;
-				flag_servo = 0; //on a fini de mesurer x,y,z
+				flag_parked = 0; //on a fini de mesurer x,y,z
 			}
 			break;
 		}
@@ -1300,9 +1445,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			break;
 
 		case 'W':
-			CMDE = CMDE_PARK;
+			CMDE = PARKED;
 			New_CMDE = 1;
 			break;
+
+		case 'X':
+			CMDE = ATT_PARK;
+			etat_park = Avancer50;
+			New_CMDE = 1;
 
 		case 'S':
 			break;
