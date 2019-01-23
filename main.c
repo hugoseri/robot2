@@ -1036,10 +1036,10 @@ void deplacement_to_park(void){
 		case Avancer50: {
 			if(flag_prem_passage == 0){
 				flag_prem_passage = 1;
-				memoire_dist = DistD;
+				memoire_dist = DistG;
 			}
 			else{
-				if(abs(DistD - memoire_dist) < 840){
+				if(abs(DistG - memoire_dist) < 840){
 					_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1076,12 +1076,12 @@ void deplacement_to_park(void){
 				if (flag_mesure == -1){ //quand on a fini la mesure
 					flag_prem_passage = 1;
 				}
-				memoire_dist = DistD;
+				memoire_dist = DistG;
 			}else{
 				if(parked_y > 50){
 					dist_to_do = abs(mesure_0 - (parked_y - 50));
 					if( mesure_0 > parked_y - 50){
-						current_dist = (DistD - memoire_dist) * 0.0566;
+						current_dist = (DistG - memoire_dist) * 0.0566;
 						_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1089,7 +1089,7 @@ void deplacement_to_park(void){
 							flag_prem_passage = 0; 
 						}
 					}else{
-						current_dist = abs(DistD - memoire_dist) * 0.0566;
+						current_dist = (memoire_dist - DistG) * 0.0566;
 						_CVitD = V2; _CVitG = V2; _DirD = RECULE; _DirG = RECULE;
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1100,7 +1100,7 @@ void deplacement_to_park(void){
 				}else{
 					dist_to_do = abs(mesure_0 - (parked_y + 50));
 					if( mesure_0 > parked_y + 50){
-						current_dist = (DistD - memoire_dist) * 0.0566;
+						current_dist = (DistG - memoire_dist) * 0.0566;
 						_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1108,7 +1108,7 @@ void deplacement_to_park(void){
 							flag_prem_passage = 0;
 						}
 					}else{
-						current_dist = abs(DistD - memoire_dist) * 0.0566;
+						current_dist = (memoire_dist - DistG) * 0.0566;
 						_CVitD = V2; _CVitG = V2; _DirD = RECULE; _DirG = RECULE;
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1124,10 +1124,10 @@ void deplacement_to_park(void){
 		case Tourner902:{ //Rotation � 90� dans le sens antihoraire
 			if (flag_prem_passage == 0){
 				flag_prem_passage = 1;
-				memoire_dist = DistD;
+				memoire_dist = DistG;
 			}
 			else{
-				if(abs(DistD - memoire_dist) < 500){
+				if(DistG - memoire_dist < 500){
 					_CVitD = 30; _CVitG = 30; _DirD = AVANCE; _DirG = RECULE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1147,10 +1147,10 @@ void deplacement_to_park(void){
 				if (flag_mesure == -1){ //quand on a fini la mesure
 					flag_prem_passage = 1;
 				}
-				memoire_dist = DistD;
+				memoire_dist = DistG;
 			}else{
 				dist_to_do = mesure_0 - parked_x;
-				current_dist = (DistD - memoire_dist) * 0.0566;
+				current_dist = (DistG - memoire_dist) * 0.0566;
 				_CVitD = V2; _CVitG = V2; _DirD = AVANCE; _DirG = AVANCE;
 				if(current_dist > dist_to_do){
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
