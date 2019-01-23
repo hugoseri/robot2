@@ -89,8 +89,8 @@ enum CMDE {
 	ARRIERE,
 	DROITE,
 	GAUCHE,
-	CMDE_PARK,
-	PARK
+	PARKED,
+	ATT_PARK
 };
 volatile enum CMDE CMDE;
 enum MODE {
@@ -129,7 +129,12 @@ volatile uint8_t mesure_0 = 0;
 volatile uint8_t mesure_90 = 0;
 volatile uint8_t mesure_m90 = 0;
 
-volatile unsigned char flag_servo = 0;
+//fonction parked
+uint8_t parked_x = 0;
+uint8_t parked_y = 0;
+uint8_t parked_z = 0;
+
+volatile unsigned char flag_parked = 0;
 volatile int8_t flag_mesure = 0;
 volatile unsigned char tempo_sonar = 0;
 
@@ -869,13 +874,12 @@ if (New_CMDE) {
 			break;
 
 		}
-		case CMDE_PARK: {
-			flag_servo = 1;
+		case PARKED: {
+			flag_parked = 1;
 			break;
 		}
-		case PARK: {
-			rotation_90_test = 1;
-			//flag_mesure = 1;
+		case ATT_PARK: {
+			//rotation_90_test = 1;
 			Mode = ACTIF;
 			break;
 		}
@@ -885,11 +889,11 @@ if (New_CMDE) {
 void controle(void) {
 
 	//Gestion du park
-	if (rotation_90_test == 1){
+	/*if (rotation_90_test == 1){
 		rotation_90(1);
-	}
+	}*/
 
-	if (flag_servo == 1){
+	if (flag_parked == 1){
 		mesure_position_robot();
 	}
 	if (flag_mesure == -1){ //cas où l'on vient de faire une mesure (fin mesure : flag_mesure = -1), on remet à 0 le flag (prêt pour une nouvelle mesure)
@@ -1105,7 +1109,7 @@ void regulateur(void) {
 }
 
 
-void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
+/*void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° dans le sens horraire sinon dans le sens anti-horraire
 	uint32_t nb_top_G;
 	uint32_t nb_top_D;
 
@@ -1147,11 +1151,12 @@ void rotation_90(char sens_rotation){ //Si sens_rotation = 1 on tourne de 90° da
 		_DirD = AVANCE; _DirG = AVANCE;
 	}
 }
+*/
 
 void mesure_position_robot(void){
 //fonction permettant la mesure en mode commande park des positions x y et z
 
-	if (flag_servo == 1){ //tant qu'on n'a pas fini la mesure des 3 positions
+	if (flag_parked == 1){ //tant qu'on n'a pas fini la mesure des 3 positions
 
 		switch (choix_xyz){
 		case -90:
@@ -1159,6 +1164,7 @@ void mesure_position_robot(void){
 				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
 			}
 			if (flag_mesure == -1){ //quand on a fini la mesure, on passe à l'angle suivant
+				parked_y = mesure_m90;
 				choix_xyz = 0;
 			}
 			break;
@@ -1167,6 +1173,7 @@ void mesure_position_robot(void){
 				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
 			}
 			if (flag_mesure == -1){ //quand on a fini la mesure, on passe à l'angle suivant
+				parked_x = mesure_0;
 				choix_xyz = 90;
 			}
 			break;
@@ -1175,8 +1182,9 @@ void mesure_position_robot(void){
 				flag_mesure = 1; //valeur flag pour initialiser mesure_xyz()
 			}
 			if (flag_mesure == -1){ //quand on a fini la mesure, on passe à l'angle suivant
-				choix_xyz = 0;
-				flag_servo = 0; //on a fini de mesurer x,y,z
+				parked_z = mesure_90;
+				choix_xyz = -90;
+				flag_parked = 0; //on a fini de mesurer x,y,z
 			}
 			break;
 		}
@@ -1186,8 +1194,8 @@ void mesure_position_robot(void){
 void mesure_xyz(int8_t xyz){
 //fonction permettant de mesurer la distance x,y ou z du robot à un mur
 	Mode = ACTIF ;
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);
-	__HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_4, 0);
+	_CVitD = 0; _CVitG = 0;
+	_DirD = AVANCE; _DirG = AVANCE;
 
 	if (flag_mesure == 1){
 		Time_mesure = 0;
@@ -1300,9 +1308,14 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 			break;
 
 		case 'W':
-			CMDE = CMDE_PARK;
+			CMDE = PARKED;
 			New_CMDE = 1;
 			break;
+
+		case 'V':
+			flag_mesure = 1;
+			break;
+
 
 		case 'S':
 			break;
