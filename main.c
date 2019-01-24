@@ -56,17 +56,10 @@
 #define AVANCE 	GPIO_PIN_SET
 #define RECULE  GPIO_PIN_RESET
 #define POURCENT 640
-/*
 #define Seuil_Dist_4 1600 // corespond � 10 cm.
 #define Seuil_Dist_3 1600
 #define Seuil_Dist_1 1600
 #define Seuil_Dist_2 1600
-*/
-#define Seuil_Dist_4 10000 // corespond � 10 cm.
-#define Seuil_Dist_3 10000
-#define Seuil_Dist_1 10000
-#define Seuil_Dist_2 10000
-
 #define V1 38
 #define V2 56
 #define V3 76
@@ -75,7 +68,7 @@
 #define T_200_MS 100
 #define T_100_MS 50
 #define T_2000_MS 1000
-#define CKp_D 100  //80 Robot1
+#define CKp_D 120  //80 Robot1
 #define CKp_G 100  //80 Robot1
 #define CKi_D 80  //50 Robot1
 #define CKi_G 80  //50 Robot1
@@ -1097,7 +1090,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
-							flag_av_ar = 0.85;
+							flag_av_ar = 0.8;
 							flag_prem_passage = 0;
 						}
 					}
@@ -1109,7 +1102,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
-							flag_av_ar = 1;
+							flag_av_ar = 0.7;
 							flag_prem_passage = 0;
 						}
 					}else{
@@ -1118,7 +1111,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
-							flag_av_ar = 0.85;
+							flag_av_ar = 1.3;
 							flag_prem_passage = 0;
 						}
 					}
@@ -1137,7 +1130,7 @@ void deplacement_to_park(void){
 					_CVitD = 30; _CVitG = 30; _DirD = AVANCE; _DirG = RECULE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
-					etat_park = AvancerAxeXCons;
+					etat_park = AvancerAxeXcons;
 					flag_prem_passage = 0;
 				}
 			}
@@ -1507,10 +1500,10 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc) {
 
-	Dist_ACS_3 = adc_buffer[0] - adc_buffer[4];
-	Dist_ACS_4 = adc_buffer[3] - adc_buffer[7];
-	Dist_ACS_1 = adc_buffer[1] - adc_buffer[5];
-	Dist_ACS_2 = adc_buffer[2] - adc_buffer[6];
+	Dist_ACS_3 = adc_buffer[0] - adc_buffer[5];
+	Dist_ACS_4 = adc_buffer[3] - adc_buffer[8];
+	Dist_ACS_1 = adc_buffer[1] - adc_buffer[6];
+	Dist_ACS_2 = adc_buffer[2] - adc_buffer[7];
 	HAL_ADC_Stop_DMA(hadc);
 }
 
