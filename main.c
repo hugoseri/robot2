@@ -5,7 +5,7 @@
   ******************************************************************************
   ** This notice applies to any and all portions of this file
   * that are not between comment pairs USER CODE BEGIN and
-  * USER CODE END. Other portions of this file, whether 
+  * USER CODE END. Other portions of this file, whether
   * inserted by the user or by software development tools
   * are owned by their respective copyright owners.
   *
@@ -137,8 +137,8 @@ volatile uint8_t mesure_90 = 0;
 volatile uint8_t mesure_m90 = 0;
 
 //fonction parked
-uint8_t parked_x = 0;
-uint8_t parked_y = 0;
+uint8_t parked_x = 20;
+uint8_t parked_y = 150;
 uint8_t parked_z = 0;
 
 volatile unsigned char flag_parked = 0;
@@ -283,7 +283,7 @@ void SystemClock_Config(void)
   RCC_ClkInitTypeDef RCC_ClkInitStruct;
   RCC_PeriphCLKInitTypeDef PeriphClkInit;
 
-    /**Initializes the CPU, AHB and APB busses clocks 
+    /**Initializes the CPU, AHB and APB busses clocks
     */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
@@ -296,7 +296,7 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Initializes the CPU, AHB and APB busses clocks 
+    /**Initializes the CPU, AHB and APB busses clocks
     */
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
                               |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
@@ -317,11 +317,11 @@ void SystemClock_Config(void)
     _Error_Handler(__FILE__, __LINE__);
   }
 
-    /**Configure the Systick interrupt time 
+    /**Configure the Systick interrupt time
     */
   HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
 
-    /**Configure the Systick 
+    /**Configure the Systick
     */
   HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
 
@@ -1029,6 +1029,8 @@ void ACS(void) {
 	}
 }
 
+float flag_av_ar = 0;
+
 void deplacement_to_park(void){
 	uint16_t current_dist = 0;
 	uint16_t dist_to_do = 0;
@@ -1056,7 +1058,7 @@ void deplacement_to_park(void){
 				memoire_dist = DistG;
 			}
 			else{
-				if(abs(DistG - memoire_dist) < 500){
+				if(abs(DistG - memoire_dist) < 480){
 					_CVitD = 30; _CVitG = 30; _DirD = RECULE; _DirG = AVANCE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
@@ -1086,7 +1088,8 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
-							flag_prem_passage = 0; 
+							flag_av_ar = 1;
+							flag_prem_passage = 0;
 						}
 					}else{
 						current_dist = (memoire_dist - DistG) * 0.0566;
@@ -1094,6 +1097,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
+							flag_av_ar = 0.85;
 							flag_prem_passage = 0;
 						}
 					}
@@ -1105,6 +1109,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
+							flag_av_ar = 1;
 							flag_prem_passage = 0;
 						}
 					}else{
@@ -1113,6 +1118,7 @@ void deplacement_to_park(void){
 						if(current_dist > dist_to_do){
 							_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 							etat_park = Tourner902;
+							flag_av_ar = 0.85;
 							flag_prem_passage = 0;
 						}
 					}
@@ -1127,11 +1133,11 @@ void deplacement_to_park(void){
 				memoire_dist = DistG;
 			}
 			else{
-				if(DistG - memoire_dist < 500){
+				if(abs(DistG - memoire_dist) < 480*flag_av_ar){
 					_CVitD = 30; _CVitG = 30; _DirD = AVANCE; _DirG = RECULE;
 				}else{
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
-					etat_park = AvancerAxeYZCons;
+					etat_park = AvancerAxeXCons;
 					flag_prem_passage = 0;
 				}
 			}
@@ -1155,7 +1161,7 @@ void deplacement_to_park(void){
 				if(current_dist > dist_to_do){
 					_CVitD = 0; _CVitG = 0; _DirD = AVANCE; _DirG = AVANCE;
 					etat_park = Fin;
-					flag_prem_passage = 0; 
+					flag_prem_passage = 0;
 				}
 			}
 			break;
@@ -1589,7 +1595,7 @@ void _Error_Handler(char *file, int line)
   * @retval None
   */
 void assert_failed(uint8_t* file, uint32_t line)
-{ 
+{
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
      tex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
